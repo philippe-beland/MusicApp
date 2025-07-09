@@ -40,7 +40,7 @@ struct HomeView: View {
     }
 
     func fetchAlbums() async {
-        var request = MusicCatalogSearchRequest(term: "John Williams", types: [MusicKit.Album.self])
+        let request = MusicCatalogSearchRequest(term: "John Williams", types: [MusicKit.Album.self])
         do {
             let response = try await request.response()
             // Sort albums by release date in ascending order
@@ -64,7 +64,9 @@ struct AlbumCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            AlbumArtwork(artwork: album.artwork, size: size)
+            if let artwork = album.artwork {
+                ArtworkImage(artwork, height: size)
+            }
             
             Text(album.title)
                 .font(.system(size: 14, weight: .medium))
@@ -75,28 +77,6 @@ struct AlbumCard: View {
                 .lineLimit(1)
         }
         .frame(width: size)
-    }
-}
-
-struct AlbumArtwork: View {
-    var artwork: Artwork?
-    let size: CGFloat
-    
-    var body: some View {
-        if let artwork = artwork {
-            AsyncImage(url: artwork.url(width: Int(size), height: Int(size))) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
-            } placeholder: {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.3))
-            }
-            .frame(width: size, height: size)
-            .cornerRadius(8)
-        } else {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: size, height: size)
-        }
     }
 }
 
