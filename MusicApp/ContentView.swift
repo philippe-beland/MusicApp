@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  MusicApp
-//
-//  Created by Philippe Beland on 2025-07-08.
-//
-
 import SwiftUI
 
 struct ContentView: View {

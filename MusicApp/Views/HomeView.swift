@@ -9,7 +9,7 @@ import SwiftUI
 import MusicKit
 
 struct HomeView: View {
-    @State private var albums: MusicItemCollection<Album> = []
+    @State private var albums: [Album] = []
 
     var body: some View {
         NavigationStack {
@@ -40,21 +40,9 @@ struct HomeView: View {
     }
 
     func fetchAlbums() async {
-        let request = MusicCatalogSearchRequest(term: "John Williams", types: [MusicKit.Album.self])
-        do {
-            let response = try await request.response()
-            // Sort albums by release date in ascending order
-            let sortedAlbums = response.albums.sorted { album1, album2 in
-                guard let date1 = album1.releaseDate, let date2 = album2.releaseDate else {
-                    // If one album has no release date, put it at the end
-                    return album1.releaseDate != nil
-                }
-                return date1 < date2
-            }
-            albums = MusicItemCollection(sortedAlbums)
-        } catch {
-            print("Error in requesting for search: \(error)")
-        }
+        let album = Album.example
+        await album.fetchAppleMusicItem()
+        albums = [album]
     }
 }
 
@@ -64,14 +52,14 @@ struct AlbumCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let artwork = album.artwork {
+            if let artwork = album.appleMusicItem?.artwork {
                 ArtworkImage(artwork, height: size)
             }
             
             Text(album.title)
                 .font(.system(size: 14, weight: .medium))
                 .lineLimit(2)
-            Text(album.artistName)
+            Text(album.artist.name)
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .lineLimit(1)
@@ -82,8 +70,7 @@ struct AlbumCard: View {
 
 struct AlbumListView: View {
     var title: String
-    var albums: MusicItemCollection<Album>
-    
+    var albums: [Album]
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
@@ -103,8 +90,8 @@ struct AlbumListView: View {
                 .padding(.horizontal, 20)
             }
         }
-        }
     }
+}
 
 #Preview {
     HomeView()

@@ -1,27 +1,27 @@
 import SwiftUI
 import MusicKit
 
-struct TrackDetailView: View {
-    let track: Track
+struct SongDetailView: View {
+    let song: Song
+    let album: Album
     @State private var comment: String = ""
     @State private var savedComment: String = ""
     
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text(track.title)
+            Text(song.title)
                 .font(.title)
                 .fontWeight(.bold)
             
-            Text(track.artistName)
+            Text(album.artist.name)
                 .font(.title3)
                 .foregroundColor(.secondary)
-            
-            if let duration = track.duration {
+
+            if let duration = song.duration {
                 Text("Durée : \(formatDuration(duration))")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
-            
             Divider()
             
             Text("Ajouter un commentaire :")
@@ -63,6 +63,6 @@ struct TrackDetailView: View {
 }
 
 #Preview {
-    // This would need a real MusicKit Track for preview
-    Text("Track Detail View")
-} 
+    // This would need a real MusicKit Song for preview
+    Text("Song Detail View")
+}
