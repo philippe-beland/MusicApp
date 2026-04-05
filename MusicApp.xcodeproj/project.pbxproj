@@ -6,12 +6,23 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4C0867802F83012000C8855F /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C08677F2F83012000C8855F /* SampleData.swift */; };
+		4C0867822F83034200C8855F /* initial_script.sql in Resources */ = {isa = PBXBuildFile; fileRef = 4C0867812F83034200C8855F /* initial_script.sql */; };
+		4C4BB5F92F81735200722184 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 4C4BB5F82F81735200722184 /* Auth */; };
+		4C4BB5FB2F81735200722184 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 4C4BB5FA2F81735200722184 /* Functions */; };
+		4C4BB5FD2F81735200722184 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 4C4BB5FC2F81735200722184 /* Storage */; };
+		4C4BB5FF2F81735200722184 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4C4BB5FE2F81735200722184 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		4C08677F2F83012000C8855F /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
+		4C0867812F83034200C8855F /* initial_script.sql */ = {isa = PBXFileReference; lastKnownFileType = text; path = initial_script.sql; sourceTree = "<group>"; };
 		4C48770E2E1D64A6000F0724 /* MusicApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MusicApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4C722FB32E1E083E00C838D0 /* Exceptions for "MusicApp" folder in "MusicApp" target */ = {
+		4CCA40142F82F806003BE21E /* Exceptions for "MusicApp" folder in "MusicApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -24,7 +35,7 @@
 		4C4877102E1D64A6000F0724 /* MusicApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				4C722FB32E1E083E00C838D0 /* Exceptions for "MusicApp" folder in "MusicApp" target */,
+				4CCA40142F82F806003BE21E /* Exceptions for "MusicApp" folder in "MusicApp" target */,
 			);
 			path = MusicApp;
 			sourceTree = "<group>";
@@ -36,6 +47,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C4BB5FF2F81735200722184 /* Supabase in Frameworks */,
+				4C4BB5FD2F81735200722184 /* Storage in Frameworks */,
+				4C4BB5FB2F81735200722184 /* Functions in Frameworks */,
+				4C4BB5F92F81735200722184 /* Auth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -47,6 +62,8 @@
 			children = (
 				4C4877102E1D64A6000F0724 /* MusicApp */,
 				4C48770F2E1D64A6000F0724 /* Products */,
+				4C08677F2F83012000C8855F /* SampleData.swift */,
+				4C0867812F83034200C8855F /* initial_script.sql */,
 			);
 			sourceTree = "<group>";
 		};
@@ -78,6 +95,10 @@
 			);
 			name = MusicApp;
 			packageProductDependencies = (
+				4C4BB5F82F81735200722184 /* Auth */,
+				4C4BB5FA2F81735200722184 /* Functions */,
+				4C4BB5FC2F81735200722184 /* Storage */,
+				4C4BB5FE2F81735200722184 /* Supabase */,
 			);
 			productName = MusicApp;
 			productReference = 4C48770E2E1D64A6000F0724 /* MusicApp.app */;
@@ -91,7 +112,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1640;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					4C48770D2E1D64A6000F0724 = {
 						CreatedOnToolsVersion = 16.4;
@@ -107,6 +128,9 @@
 			);
 			mainGroup = 4C4877052E1D64A6000F0724;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4C4BB5F72F81735200722184 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4C48770F2E1D64A6000F0724 /* Products */;
 			projectDirPath = "";
@@ -122,6 +146,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C0867822F83034200C8855F /* initial_script.sql in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,6 +157,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C0867802F83012000C8855F /* SampleData.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -273,7 +299,6 @@
 				INFOPLIST_FILE = MusicApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = MusicApp;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Nécessaire pour jouer de la musique";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -309,7 +334,6 @@
 				INFOPLIST_FILE = MusicApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = MusicApp;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Nécessaire pour jouer de la musique";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -353,6 +377,40 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4C4BB5F72F81735200722184 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4C4BB5F82F81735200722184 /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C4BB5F72F81735200722184 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		4C4BB5FA2F81735200722184 /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C4BB5F72F81735200722184 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		4C4BB5FC2F81735200722184 /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C4BB5F72F81735200722184 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		4C4BB5FE2F81735200722184 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C4BB5F72F81735200722184 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4C4877062E1D64A6000F0724 /* Project object */;
 }
