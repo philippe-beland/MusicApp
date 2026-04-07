@@ -90,8 +90,8 @@ enum SampleData {
             Piece(id: UUID(), Work: nil, title: "I. Allegro con brio", pieceNumber: 1,
                   keySignature: "C minor", timeSignature: "2/4", tempoBPM: 108, durationMS: 480_000,
                   files: [
-                    File(id: UUID(), sourceType: .audio, storageURL: URL(string: "https://cdn.example.com/beethoven/symphony5/mv1.mp3")),
-                    File(id: UUID(), sourceType: .pdfScore, storageURL: URL(string: "https://cdn.example.com/beethoven/symphony5/mv1.pdf")),
+                    File(id: UUID(), sourceType: .audio, storageURL: URL(string: "https://musicdb.b-cdn.net/audio/Miniature pour hautbois.mp3")),
+                    File(id: UUID(), sourceType: .pdfScore, storageURL: URL(string: "https://musicdb.b-cdn.net/scores/Beatiful%20Delilah%20-%20Guitar.pdf")),
                   ]),
             Piece(id: UUID(), Work: nil, title: "II. Andante con moto", pieceNumber: 2,
                   keySignature: "A-flat major", timeSignature: "3/8", tempoBPM: 92, durationMS: 600_000,

@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		4C0867802F83012000C8855F /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C08677F2F83012000C8855F /* SampleData.swift */; };
-		4C0867822F83034200C8855F /* initial_script.sql in Resources */ = {isa = PBXBuildFile; fileRef = 4C0867812F83034200C8855F /* initial_script.sql */; };
 		4C4BB5F92F81735200722184 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 4C4BB5F82F81735200722184 /* Auth */; };
 		4C4BB5FB2F81735200722184 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 4C4BB5FA2F81735200722184 /* Functions */; };
 		4C4BB5FD2F81735200722184 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 4C4BB5FC2F81735200722184 /* Storage */; };
@@ -17,7 +16,6 @@
 
 /* Begin PBXFileReference section */
 		4C08677F2F83012000C8855F /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
-		4C0867812F83034200C8855F /* initial_script.sql */ = {isa = PBXFileReference; lastKnownFileType = text; path = initial_script.sql; sourceTree = "<group>"; };
 		4C48770E2E1D64A6000F0724 /* MusicApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MusicApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -63,7 +61,6 @@
 				4C4877102E1D64A6000F0724 /* MusicApp */,
 				4C48770F2E1D64A6000F0724 /* Products */,
 				4C08677F2F83012000C8855F /* SampleData.swift */,
-				4C0867812F83034200C8855F /* initial_script.sql */,
 			);
 			sourceTree = "<group>";
 		};
@@ -146,7 +143,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C0867822F83034200C8855F /* initial_script.sql in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

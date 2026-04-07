@@ -1,25 +1,39 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(AudioPlayerManager.self) private var audioManager
+
     var body: some View {
-        TabView {
-            HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "house")
+        ZStack(alignment: .bottom) {
+            TabView {
+                HomeView()
+                    .tabItem {
+                        Label("Home", systemImage: "house")
+                    }
+                LibraryView()
+                    .tabItem {
+                        Label("Library", systemImage: "music.note")
+                    }
+                SearchView()
+                    .tabItem {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+                SettingsView()
+                    .tabItem {
+                        Label("Settings", systemImage: "gear")
+                    }
+            }
+            .padding(.bottom, audioManager.isLoaded ? 56 : 0)
+
+            if audioManager.isLoaded {
+                VStack(spacing: 0) {
+                    Divider()
+                    MiniPlayerBar(manager: audioManager)
                 }
-            LibraryView()
-                .tabItem {
-                    Label("Library", systemImage: "music.note")
-                }
-            SearchView()
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
+                .transition(.move(edge: .bottom))
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: audioManager.isLoaded)
     }
 }
 
@@ -27,4 +41,5 @@ struct ContentView: View {
     ContentView()
         .environment(AuthManager())
         .environment(DataProvider())
+        .environment(AudioPlayerManager())
 }

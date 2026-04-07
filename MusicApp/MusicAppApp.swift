@@ -4,6 +4,7 @@ import SwiftUI
 struct MusicAppApp: App {
     @State private var authManager = AuthManager()
     @State private var dataProvider = DataProvider()
+    @State private var audioManager = AudioPlayerManager()
 
     var body: some Scene {
         WindowGroup {
@@ -18,6 +19,7 @@ struct MusicAppApp: App {
             }
             .environment(authManager)
             .environment(dataProvider)
+            .environment(audioManager)
             .task {
                 await authManager.checkSession()
                 await dataProvider.loadAll()

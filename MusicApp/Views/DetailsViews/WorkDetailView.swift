@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WorkDetailView: View {
     let work: Work
+    @Environment(AudioPlayerManager.self) private var audioManager
 
     var body: some View {
         ScrollView {
@@ -36,16 +37,20 @@ struct WorkDetailView: View {
 
                 // Pieces
                 if !work.pieces.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(work.workType == .symphony ? "Movements" : "Tracks")
                             .font(.title3.bold())
                             .padding(.horizontal)
+                            .padding(.bottom, 4)
 
                         ForEach(Array(work.pieces.enumerated()), id: \.element.id) { index, piece in
-                            NavigationLink(destination: PieceDetailView(piece: piece, work: work)) {
-                                PieceListRow(piece: piece, index: index)
-                            }
-                            .buttonStyle(.plain)
+                            PieceListRow(
+                                piece: piece,
+                                work: work,
+                                index: index,
+                                isPlaying: audioManager.nowPlayingPiece?.id == piece.id && audioManager.isPlaying,
+                                onPlay: { audioManager.play(piece: piece, work: work) }
+                            )
                         }
                     }
                 }
@@ -127,30 +132,61 @@ struct MetadataRow: View {
 
 struct PieceListRow: View {
     let piece: Piece
+    let work: Work
     let index: Int
+    var isPlaying: Bool = false
+    var onPlay: (() -> Void)?
+
+    private var hasAudio: Bool {
+        piece.files?.contains(where: { $0.sourceType == .audio }) ?? false
+    }
 
     var body: some View {
-        HStack {
-            Text("\(index + 1)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(width: 28, alignment: .trailing)
-
-            Text(piece.title)
-                .font(.body)
-                .lineLimit(1)
-
-            Spacer()
-
-            if let ms = piece.durationMS {
-                Text(formatDuration(ms))
+        HStack(spacing: 0) {
+            // Tap area: play audio
+            Button {
+                onPlay?()
+            } label: {
+                HStack {
+                    Group {
+                        if isPlaying {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .foregroundStyle(.tint)
+                                .font(.caption)
+                        } else {
+                            Text("\(index + 1)")
+                                .foregroundStyle(hasAudio ? .primary : .secondary)
+                        }
+                    }
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+                    .frame(width: 28, alignment: .trailing)
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                    Text(piece.title)
+                        .font(.body)
+                        .foregroundStyle(isPlaying ? Color.accentColor : .primary)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    if let ms = piece.durationMS {
+                        Text(formatDuration(ms))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!hasAudio)
+
+            // Info button → detail view
+            NavigationLink(destination: PieceDetailView(piece: piece, work: work)) {
+                Image(systemName: "ellipsis.circle")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 12)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -168,4 +204,5 @@ struct PieceListRow: View {
     NavigationStack {
         WorkDetailView(work: SampleData.interstellar)
     }
+    .environment(AudioPlayerManager())
 }

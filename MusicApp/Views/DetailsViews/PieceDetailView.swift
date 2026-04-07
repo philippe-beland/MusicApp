@@ -78,7 +78,7 @@ struct PieceDetailView: View {
 
                 // Files (audio, PDF scores, etc.)
                 if let files = piece.files, !files.isEmpty {
-                    FileListSection(files: files)
+                    FileListSection(files: files, work: work)
                         .padding(.horizontal)
                 }
             }
@@ -121,4 +121,5 @@ struct DetailCard: View {
             work: SampleData.kindOfBlue
         )
     }
+    .environment(AudioPlayerManager())
 }

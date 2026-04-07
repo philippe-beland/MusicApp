@@ -2,9 +2,14 @@ import SwiftUI
 
 struct FileListSection: View {
     let files: [File]
+    let work: Work
 
-    @State private var expandedAudioFile: File?
+    @Environment(AudioPlayerManager.self) private var audioManager
     @State private var selectedPDF: File?
+
+    private var audioURL: URL? {
+        files.first(where: { $0.sourceType == .audio })?.storageURL
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -15,22 +20,43 @@ struct FileListSection: View {
                 fileRow(file)
             }
 
-            // Inline audio player
-            if let audioFile = expandedAudioFile, let url = audioFile.storageURL {
-                AudioPlayerView(url: url)
+            // Inline audio player when playing a file from this piece
+            if let piece = audioManager.nowPlayingPiece,
+               files.contains(where: { file in file.sourceType == .audio && piece.files?.contains(where: { f in f.id == file.id }) ?? false }),
+               audioManager.isLoaded {
+                AudioPlayerView(manager: audioManager)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: expandedAudioFile?.id)
-        .sheet(item: $selectedPDF) { file in
+        .animation(.easeInOut(duration: 0.25), value: audioManager.nowPlayingPiece?.id)
+        .fullScreenCover(item: $selectedPDF) { file in
             if let url = file.storageURL {
                 NavigationStack {
-                    PDFViewerView(url: url)
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("Done") { selectedPDF = nil }
+                    ZStack(alignment: .bottom) {
+                        PDFViewerView(url: url)
+                            .ignoresSafeArea(edges: .bottom)
+
+                        if audioManager.isLoaded {
+                            MiniPlayerBar(manager: audioManager)
+                        }
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { selectedPDF = nil }
+                        }
+                        if files.contains(where: { $0.sourceType == .audio }),
+                           !audioManager.isLoaded,
+                           let audioURL {
+                            ToolbarItem(placement: .primaryAction) {
+                                Button {
+                                    audioManager.load(url: audioURL)
+                                    audioManager.playPause()
+                                } label: {
+                                    Image(systemName: "play.circle")
+                                }
                             }
                         }
+                    }
                 }
             }
         }
@@ -60,7 +86,7 @@ struct FileListSection: View {
                 Spacer()
 
                 if isPlayable(file) {
-                    Image(systemName: expandedAudioFile?.id == file.id ? "stop.fill" : "play.fill")
+                    Image(systemName: audioManager.nowPlayingPiece != nil && audioManager.isPlaying ? "stop.fill" : "play.fill")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if file.sourceType == .pdfScore {
@@ -81,10 +107,13 @@ struct FileListSection: View {
     private func handleTap(_ file: File) {
         switch file.sourceType {
         case .audio:
-            if expandedAudioFile?.id == file.id {
-                expandedAudioFile = nil
-            } else {
-                expandedAudioFile = file
+            if let url = file.storageURL {
+                if audioManager.isLoaded {
+                    audioManager.stop()
+                } else {
+                    audioManager.load(url: url)
+                    audioManager.playPause()
+                }
             }
         case .pdfScore:
             selectedPDF = file
