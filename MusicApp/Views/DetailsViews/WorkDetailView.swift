@@ -200,9 +200,4 @@ struct PieceListRow: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        WorkDetailView(work: SampleData.interstellar)
-    }
-    .environment(AudioPlayerManager())
-}
+

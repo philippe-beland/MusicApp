@@ -114,12 +114,4 @@ struct DetailCard: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        PieceDetailView(
-            piece: SampleData.kindOfBlue.pieces[0],
-            work: SampleData.kindOfBlue
-        )
-    }
-    .environment(AudioPlayerManager())
-}
+

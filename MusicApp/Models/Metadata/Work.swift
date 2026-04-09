@@ -19,6 +19,7 @@ struct Work: Identifiable, Hashable, Codable {
     var genre: Genre
     var country: String?
     var releaseDate: Date?
+    var artworkURL: URL?
     
     // Classical Metadata
     var opus: String?

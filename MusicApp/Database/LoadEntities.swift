@@ -32,6 +32,7 @@ struct WorkRow: Codable, Sendable {
     let producer: String?
     let recording_studio: String?
     let notes: String?
+    let artwork_url: String?
 }
 
 struct PieceRow: Codable, Sendable {
@@ -151,6 +152,7 @@ extension WorkRow {
             genre: Genre(rawValue: genre ?? "") ?? .other,
             country: country,
             releaseDate: nil,
+            artworkURL: artwork_url.flatMap { URL(string: $0) },
             opus: opus,
             premiereDate: nil,
             premiereLocation: premiere_location,

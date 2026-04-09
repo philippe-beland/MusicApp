@@ -63,18 +63,6 @@ struct LoginView: View {
                 .padding(.horizontal)
 
                 Spacer()
-
-                // Skip option
-                Button {
-                    dataProvider.useSampleData = true
-                    Task { await dataProvider.loadAll() }
-                    auth.isAuthenticated = true
-                } label: {
-                    Text("Continue with Sample Data")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.bottom, 24)
             }
             .navigationBarHidden(true)
         }

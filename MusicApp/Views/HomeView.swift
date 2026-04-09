@@ -138,6 +138,27 @@ struct WorkArtworkPlaceholder: View {
     }
 
     var body: some View {
+        if let artworkURL = work.artworkURL {
+            AsyncImage(url: artworkURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: height)
+                        .clipped()
+                default:
+                    placeholder
+                }
+            }
+            .frame(height: height)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        } else {
+            placeholder
+        }
+    }
+
+    private var placeholder: some View {
         ZStack {
             LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
             Image(systemName: iconName)

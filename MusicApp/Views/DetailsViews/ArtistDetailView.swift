@@ -71,11 +71,4 @@ struct ArtistDetailView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        ArtistDetailView(
-            artist: SampleData.pinkFloyd,
-            works: [SampleData.darkSide]
-        )
-    }
-}
+
