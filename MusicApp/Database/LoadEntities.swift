@@ -129,6 +129,13 @@ extension PieceRow {
 }
 
 extension WorkRow {
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
     func toWork(pieces: [Piece]) -> Work {
         let mappedArtist = artist?.toArtist() ?? Artist(
             id: UUID(),
@@ -151,7 +158,7 @@ extension WorkRow {
             workType: WorkType(rawValue: work_type ?? "") ?? .other,
             genre: Genre(rawValue: genre ?? "") ?? .other,
             country: country,
-            releaseDate: nil,
+            releaseDate: release_date.flatMap { Self.dateFormatter.date(from: $0) },
             artworkURL: artwork_url.flatMap { URL(string: $0) },
             opus: opus,
             premiereDate: nil,
@@ -218,4 +225,70 @@ func fetchWorksWithPieces() async throws -> [Work] {
             }
         return row.toWork(pieces: pieces)
     }
+}
+
+// MARK: - Update DTOs
+
+struct ArtistUpdate: Codable, Sendable {
+    var name: String?
+    var type: String?
+    var genre: String?
+    var country: String?
+    var members: [String]?
+}
+
+struct WorkUpdate: Codable, Sendable {
+    var title: String?
+    var work_type: String?
+    var genre: String?
+    var country: String?
+    var release_date: String?
+    var opus: String?
+    var premiere_location: String?
+    var film_title: String?
+    var director: String?
+    var awards: [String]?
+    var label: String?
+    var producer: String?
+    var recording_studio: String?
+    var notes: String?
+}
+
+struct PieceUpdate: Codable, Sendable {
+    var title: String?
+    var piece_number: Int?
+    var composer: String?
+    var key_signature: String?
+    var time_signature: String?
+    var tempo_bpm: Double?
+    var duration_ms: Int?
+    var feel: String?
+    var genre: String?
+    var form: String?
+}
+
+// MARK: - Update Functions
+
+func updateArtist(id: UUID, update: ArtistUpdate) async throws {
+    try await supabase
+        .from("artist")
+        .update(update)
+        .eq("id", value: id)
+        .execute()
+}
+
+func updateWork(id: UUID, update: WorkUpdate) async throws {
+    try await supabase
+        .from("work")
+        .update(update)
+        .eq("id", value: id)
+        .execute()
+}
+
+func updatePiece(id: UUID, update: PieceUpdate) async throws {
+    try await supabase
+        .from("piece")
+        .update(update)
+        .eq("id", value: id)
+        .execute()
 }

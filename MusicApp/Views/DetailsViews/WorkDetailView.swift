@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkDetailView: View {
     let work: Work
     @Environment(AudioPlayerManager.self) private var audioManager
+    @State private var showingEdit = false
 
     var body: some View {
         ScrollView {
@@ -59,6 +60,135 @@ struct WorkDetailView: View {
         }
         .navigationTitle(work.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit") { showingEdit = true }
+            }
+        }
+        .sheet(isPresented: $showingEdit) {
+            WorkEditView(work: work)
+        }
+    }
+}
+
+// MARK: - Work Edit View
+
+struct WorkEditView: View {
+    @Environment(DataProvider.self) private var dataProvider
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var title: String
+    @State private var workType: WorkType
+    @State private var genre: Genre
+    @State private var releaseDate: Date
+    @State private var hasReleaseDate: Bool
+    @State private var opus: String
+    @State private var label: String
+    @State private var producer: String
+    @State private var studio: String
+    @State private var director: String
+    @State private var premiere: String
+    @State private var notes: String
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    let work: Work
+
+    init(work: Work) {
+        self.work = work
+        _title = State(initialValue: work.title)
+        _workType = State(initialValue: work.workType)
+        _genre = State(initialValue: work.genre)
+        _releaseDate = State(initialValue: work.releaseDate ?? Date())
+        _hasReleaseDate = State(initialValue: work.releaseDate != nil)
+        _opus = State(initialValue: work.opus ?? "")
+        _label = State(initialValue: work.label ?? "")
+        _producer = State(initialValue: work.producer ?? "")
+        _studio = State(initialValue: work.recordingStudio ?? "")
+        _director = State(initialValue: work.director ?? "")
+        _premiere = State(initialValue: work.premiereLocation ?? "")
+        _notes = State(initialValue: work.notes ?? "")
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("General") {
+                    TextField("Title", text: $title)
+                    Picker("Type", selection: $workType) {
+                        ForEach(WorkType.allCases, id: \.self) { t in
+                            Text(t.rawValue.capitalized).tag(t)
+                        }
+                    }
+                    Picker("Genre", selection: $genre) {
+                        ForEach(Genre.allCases, id: \.self) { g in
+                            Text(g.displayName).tag(g)
+                        }
+                    }
+                    Toggle("Release Date", isOn: $hasReleaseDate)
+                    if hasReleaseDate {
+                        DatePicker("Date", selection: $releaseDate, displayedComponents: .date)
+                    }
+                }
+
+                Section("Details") {
+                    TextField("Opus", text: $opus)
+                    TextField("Label", text: $label)
+                    TextField("Producer", text: $producer)
+                    TextField("Studio", text: $studio)
+                    TextField("Director", text: $director)
+                    TextField("Premiere Location", text: $premiere)
+                }
+
+                Section("Notes") {
+                    TextField("Notes", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+
+                if let error = errorMessage {
+                    Section {
+                        Text(error).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Edit Work")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .disabled(title.isEmpty || isSaving)
+                }
+            }
+        }
+    }
+
+    private func save() {
+        isSaving = true
+        errorMessage = nil
+        Task {
+            do {
+                var updated = work
+                updated.title = title
+                updated.workType = workType
+                updated.genre = genre
+                updated.releaseDate = hasReleaseDate ? releaseDate : nil
+                updated.opus = opus.isEmpty ? nil : opus
+                updated.label = label.isEmpty ? nil : label
+                updated.producer = producer.isEmpty ? nil : producer
+                updated.recordingStudio = studio.isEmpty ? nil : studio
+                updated.director = director.isEmpty ? nil : director
+                updated.premiereLocation = premiere.isEmpty ? nil : premiere
+                updated.notes = notes.isEmpty ? nil : notes
+                try await dataProvider.saveWork(updated)
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isSaving = false
+        }
     }
 }
 
@@ -82,8 +212,17 @@ struct TagBadge: View {
 struct WorkMetadataSection: View {
     let work: Work
 
+    private static let displayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        return f
+    }()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if let date = work.releaseDate {
+                MetadataRow(label: "Release Date", value: Self.displayFormatter.string(from: date))
+            }
             if let opus = work.opus {
                 MetadataRow(label: "Opus", value: opus)
             }

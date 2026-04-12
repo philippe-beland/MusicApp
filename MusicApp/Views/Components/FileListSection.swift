@@ -74,7 +74,7 @@ struct FileListSection: View {
                     .frame(width: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(label(for: file.sourceType))
+                    Text(fileLabel(for: file))
                         .font(.subheadline.weight(.medium))
                     if file.isPrimary {
                         Text("Primary")
@@ -148,15 +148,18 @@ struct FileListSection: View {
         }
     }
 
-    private func label(for type: SourceType) -> String {
-        switch type {
-        case .audio: "Audio"
-        case .pdfScore: "PDF Score"
-        case .musicxml: "MusicXML"
-        case .musescore: "MuseScore"
-        case .guitarPro: "Guitar Pro"
-        case .midi: "MIDI"
-        case .video: "Video"
+    private func fileLabel(for file: File) -> String {
+        if file.sourceType == .pdfScore, let instrument = file.instrumentName {
+            return "PDF Score — \(instrument)"
+        }
+        switch file.sourceType {
+        case .audio: return "Audio"
+        case .pdfScore: return "PDF Score"
+        case .musicxml: return "MusicXML"
+        case .musescore: return "MuseScore"
+        case .guitarPro: return "Guitar Pro"
+        case .midi: return "MIDI"
+        case .video: return "Video"
         }
     }
 }

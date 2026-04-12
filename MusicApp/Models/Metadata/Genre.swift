@@ -5,7 +5,6 @@ enum Genre: String, Codable, CaseIterable {
     case filmScore = "film_score"
     case jazz
     case rock
-    case metal
     case pop
     case electronic
     case other
@@ -16,7 +15,6 @@ enum Genre: String, Codable, CaseIterable {
         case .filmScore: "Film Score"
         case .jazz: "Jazz"
         case .rock: "Rock"
-        case .metal: "Metal"
         case .pop: "Pop"
         case .electronic: "Electronic"
         case .other: "Other"
@@ -29,7 +27,6 @@ enum Genre: String, Codable, CaseIterable {
         case .filmScore: "film"
         case .jazz: "music.quarternote.3"
         case .rock: "guitars"
-        case .metal: "bolt.fill"
         case .pop: "star.fill"
         case .electronic: "waveform"
         case .other: "music.note"
@@ -42,7 +39,6 @@ enum Genre: String, Codable, CaseIterable {
         case .filmScore: .orange
         case .jazz: .blue
         case .rock: .gray
-        case .metal: .red
         case .pop: .pink
         case .electronic: .cyan
         case .other: .teal

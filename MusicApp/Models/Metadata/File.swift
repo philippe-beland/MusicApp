@@ -18,4 +18,13 @@ struct File: Identifiable, Hashable, Codable {
     var filePath: String?
     var storageURL: URL?
     var isPrimary: Bool = false
+
+    /// Extract instrument name from the filename (last segment after splitting by "-").
+    var instrumentName: String? {
+        guard let url = storageURL ?? filePath.flatMap({ URL(string: $0) }) else { return nil }
+        let filename = url.deletingPathExtension().lastPathComponent
+        let parts = filename.split(separator: "-").map { $0.trimmingCharacters(in: .whitespaces) }
+        guard parts.count > 1 else { return nil }
+        return parts.last
+    }
 }

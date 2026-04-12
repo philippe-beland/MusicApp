@@ -23,6 +23,7 @@ struct MusicAppApp: App {
             .task {
                 await authManager.checkSession()
                 await dataProvider.loadAll()
+                audioManager.restoreState(from: dataProvider.works)
             }
         }
     }

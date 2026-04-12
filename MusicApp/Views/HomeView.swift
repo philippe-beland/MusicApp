@@ -1,67 +1,5 @@
 import SwiftUI
 
-struct HomeView: View {
-    @Environment(DataProvider.self) private var dataProvider
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                if dataProvider.isLoading {
-                    ProgressView()
-                        .padding(.top, 100)
-                } else if dataProvider.works.isEmpty {
-                    ContentUnavailableView("No Works", systemImage: "music.note",
-                        description: Text("Add works to your library to see them here."))
-                } else {
-                    VStack(alignment: .leading, spacing: 28) {
-                        // Featured work
-                        if let featured = dataProvider.works.first {
-                            FeaturedWorkCard(work: featured)
-                                .padding(.horizontal)
-                        }
-
-                        WorkCarousel(title: "Recently Listened", works: dataProvider.works)
-                        WorkCarousel(title: "Recently Analyzed", works: Array(dataProvider.works.reversed()))
-                    }
-                    .padding(.vertical)
-                }
-            }
-            .navigationTitle("Home")
-        }
-    }
-}
-
-// MARK: - Featured Card
-
-struct FeaturedWorkCard: View {
-    let work: Work
-
-    var body: some View {
-        NavigationLink(destination: WorkDetailView(work: work)) {
-            ZStack(alignment: .bottomLeading) {
-                WorkArtworkPlaceholder(work: work, height: 200)
-
-                LinearGradient(
-                    colors: [.black.opacity(0.7), .clear],
-                    startPoint: .bottom,
-                    endPoint: .center
-                )
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(work.title)
-                        .font(.title2.bold())
-                    Text(work.artist.name)
-                        .font(.subheadline)
-                }
-                .foregroundStyle(.white)
-                .padding()
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 // MARK: - Carousel
 
 struct WorkCarousel: View {
@@ -170,7 +108,4 @@ struct WorkArtworkPlaceholder: View {
     }
 }
 
-#Preview {
-    HomeView()
-        .environment(DataProvider())
-}
+
