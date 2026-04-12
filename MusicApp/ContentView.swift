@@ -14,10 +14,6 @@ struct ContentView: View {
                     .tabItem {
                         Label("Library", systemImage: "music.note")
                     }
-                SearchView()
-                    .tabItem {
-                        Label("Search", systemImage: "magnifyingglass")
-                    }
                 SettingsView()
                     .tabItem {
                         Label("Settings", systemImage: "gear")
