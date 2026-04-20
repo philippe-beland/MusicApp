@@ -38,7 +38,7 @@ struct LibraryView: View {
                 if isSearching {
                     List {
                         if !filteredArtists.isEmpty {
-                            Section("Artists") {
+                            SwiftUI.Section("Artists") {
                                 ForEach(filteredArtists) { artist in
                                     NavigationLink(destination: ArtistDetailView(
                                         artist: artist,
@@ -51,7 +51,7 @@ struct LibraryView: View {
                         }
 
                         if !filteredWorks.isEmpty {
-                            Section("Works") {
+                            SwiftUI.Section("Works") {
                                 ForEach(filteredWorks) { work in
                                     NavigationLink(destination: WorkDetailView(work: work)) {
                                         WorkListRow(work: work)
@@ -61,7 +61,7 @@ struct LibraryView: View {
                         }
 
                         if !filteredPieces.isEmpty {
-                            Section("Pieces") {
+                            SwiftUI.Section("Pieces") {
                                 ForEach(filteredPieces, id: \.piece.id) { result in
                                     NavigationLink(destination: PieceDetailView(
                                         piece: result.piece,

@@ -3,7 +3,15 @@ import SwiftUI
 struct PieceDetailView: View {
     let piece: Piece
     let work: Work
+    @Environment(DataProvider.self) private var dataProvider
     @State private var showingEdit = false
+
+    /// Live piece from the data provider (reflects DB changes), falling back to the snapshot.
+    private var livePiece: Piece {
+        dataProvider.works
+            .flatMap(\.pieces)
+            .first(where: { $0.id == piece.id }) ?? piece
+    }
 
     var body: some View {
         ScrollView {
@@ -13,7 +21,7 @@ struct PieceDetailView: View {
                     WorkArtworkPlaceholder(work: work, height: 140)
                         .frame(maxWidth: 140)
 
-                    Text(piece.title)
+                    Text(livePiece.title)
                         .font(.title2.bold())
                         .multilineTextAlignment(.center)
                     Text(work.artist.name)
@@ -37,25 +45,25 @@ struct PieceDetailView: View {
                         GridItem(.flexible()),
                         GridItem(.flexible()),
                     ], spacing: 16) {
-                        if let key = piece.keySignature {
+                        if let key = livePiece.keySignature {
                             DetailCard(label: "Key", value: key, icon: "music.note")
                         }
-                        if let time = piece.timeSignature {
+                        if let time = livePiece.timeSignature {
                             DetailCard(label: "Time", value: time, icon: "metronome")
                         }
-                        if let bpm = piece.tempoBPM {
+                        if let bpm = livePiece.tempoBPM {
                             DetailCard(label: "Tempo", value: "\(Int(bpm)) BPM", icon: "speedometer")
                         }
-                        if let ms = piece.durationMS {
+                        if let ms = livePiece.durationMS {
                             let totalSeconds = ms / 1000
                             let min = totalSeconds / 60
                             let sec = totalSeconds % 60
                             DetailCard(label: "Duration", value: String(format: "%d:%02d", min, sec), icon: "clock")
                         }
-                        if let form = piece.form {
+                        if let form = livePiece.form {
                             DetailCard(label: "Form", value: form, icon: "rectangle.3.group")
                         }
-                        if let feel = piece.feel {
+                        if let feel = livePiece.feel {
                             DetailCard(label: "Feel", value: feel, icon: "waveform")
                         }
                     }
@@ -63,29 +71,47 @@ struct PieceDetailView: View {
                 .padding(.horizontal)
 
                 // Composer / contributors
-                if piece.composer != nil || piece.lyricist != nil {
+                if livePiece.composer != nil || livePiece.lyricist != nil {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Credits")
                             .font(.title3.bold())
-                        if let composer = piece.composer {
+                        if let composer = livePiece.composer {
                             MetadataRow(label: "Composer", value: composer)
                         }
-                        if let lyricist = piece.lyricist {
+                        if let lyricist = livePiece.lyricist {
                             MetadataRow(label: "Lyricist", value: lyricist)
                         }
                     }
                     .padding(.horizontal)
                 }
 
+                // Sections
+                if let sections = livePiece.sections, !sections.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Sections")
+                            .font(.title3.bold())
+
+                        ForEach(sections) { section in
+                            SectionRowView(section: section, depth: 0, onDelete: { sectionId in
+                                Task {
+                                    try? await deleteSection(id: sectionId)
+                                    await dataProvider.loadAll()
+                                }
+                            })
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+
                 // Files (audio, PDF scores, etc.)
-                if let files = piece.files, !files.isEmpty {
-                    FileListSection(files: files, work: work)
+                if let files = livePiece.files, !files.isEmpty {
+                    FileListSection(files: files, piece: livePiece, work: work)
                         .padding(.horizontal)
                 }
             }
             .padding(.bottom)
         }
-        .navigationTitle(piece.title)
+        .navigationTitle(livePiece.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -130,12 +156,12 @@ struct PieceEditView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("General") {
+                SwiftUI.Section("General") {
                     TextField("Title", text: $title)
                     TextField("Composer", text: $composer)
                 }
 
-                Section("Musical Details") {
+                SwiftUI.Section("Musical Details") {
                     TextField("Key Signature", text: $keySignature)
                     TextField("Time Signature", text: $timeSignature)
                     TextField("Tempo (BPM)", text: $tempoBPM)
@@ -145,7 +171,7 @@ struct PieceEditView: View {
                 }
 
                 if let error = errorMessage {
-                    Section {
+                    SwiftUI.Section {
                         Text(error).foregroundStyle(.red)
                     }
                 }
@@ -214,4 +240,86 @@ struct DetailCard: View {
     }
 }
 
+// MARK: - Section Row View
 
+struct SectionRowView: View {
+    let section: Section
+    let depth: Int
+    var onDelete: ((UUID) -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                // Section type badge
+                Text(section.sectionType.displayName)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(sectionColor.opacity(0.15))
+                    .foregroundStyle(sectionColor)
+                    .clipShape(Capsule())
+
+                // Label
+                if let label = section.label, !label.isEmpty {
+                    Text(label)
+                        .font(.subheadline.weight(.medium))
+                }
+
+                Spacer()
+
+                // Time range
+                if let start = section.startTimeMs {
+                    Text(timeString(start) + (section.endTimeMs.map { " – " + timeString($0) } ?? ""))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Children (indented)
+            if !section.children.isEmpty {
+                ForEach(section.children) { child in
+                    SectionRowView(section: child, depth: depth + 1, onDelete: onDelete)
+                        .padding(.leading, 16)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .padding(.leading, CGFloat(depth) * 16)
+        .background(depth == 0 ? AnyShapeStyle(.fill.quaternary) : AnyShapeStyle(.clear))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .contextMenu {
+            if onDelete != nil {
+                Button(role: .destructive) {
+                    onDelete?(section.id)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private func timeString(_ ms: Double) -> String {
+        let totalSeconds = Int(ms / 1000)
+        let min = totalSeconds / 60
+        let sec = totalSeconds % 60
+        return String(format: "%d:%02d", min, sec)
+    }
+
+    private var sectionColor: Color {
+        switch section.sectionType {
+        case .intro, .outro: .blue
+        case .verse: .green
+        case .chorus: .orange
+        case .bridge, .transition: .purple
+        case .solo: .red
+        case .preChorus: .yellow
+        case .interlude: .teal
+        case .exposition, .development, .recapitulation: .indigo
+        case .coda: .mint
+        case .theme, .variation: .cyan
+        case .scene: .pink
+        case .other: .secondary
+        }
+    }
+}

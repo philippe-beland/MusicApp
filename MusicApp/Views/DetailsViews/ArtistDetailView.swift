@@ -148,7 +148,7 @@ struct ArtistEditView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("General") {
+                SwiftUI.Section("General") {
                     TextField("Name", text: $name)
                     Picker("Type", selection: $type) {
                         ForEach(ArtistType.allCases, id: \.self) { t in
@@ -164,7 +164,7 @@ struct ArtistEditView: View {
                 }
 
                 if let error = errorMessage {
-                    Section {
+                    SwiftUI.Section {
                         Text(error)
                             .foregroundStyle(.red)
                     }

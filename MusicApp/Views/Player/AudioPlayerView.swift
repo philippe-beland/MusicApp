@@ -313,6 +313,10 @@ struct AudioPlayerView: View {
 struct MiniPlayerBar: View {
     let manager: AudioPlayerManager
     var showTitle: Bool = true
+    @Environment(DataProvider.self) private var dataProvider
+    @State private var showingSectionAdded = false
+    @State private var addedSectionName = ""
+    @State private var capturedTimeMs: Int = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -375,7 +379,22 @@ struct MiniPlayerBar: View {
 
                 Spacer(minLength: 0)
 
-                // Right: Speed, Volume
+                // Right: Add Section, Speed, Volume
+                Menu {
+                    ForEach(SectionType.allCases, id: \.self) { type in
+                        Button(type.displayName) {
+                            addSection(type: type, timeMs: capturedTimeMs)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                .onTapGesture {
+                    capturedTimeMs = Int(manager.currentTime * 1000)
+                }
+
                 SpeedMenuView(manager: manager)
 
                 VolumeSliderView(manager: manager)
@@ -386,6 +405,46 @@ struct MiniPlayerBar: View {
             .padding(.vertical, 8)
         }
         .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            if showingSectionAdded {
+                Text("Added: \(addedSectionName) at \(formatTime(manager.currentTime))")
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.green.opacity(0.85), in: Capsule())
+                    .foregroundStyle(.white)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .offset(y: -36)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: showingSectionAdded)
+    }
+
+    private func addSection(type: SectionType, timeMs: Int) {
+        guard let piece = manager.nowPlayingPiece else {
+            print("[Section] No piece currently playing")
+            return
+        }
+        print("[Section] Adding \(type.displayName) at \(timeMs)ms for piece \(piece.id)")
+
+        Task { @MainActor in
+            do {
+                let insert = SectionInsert(
+                    piece_id: piece.id,
+                    section_type: type.rawValue,
+                    start_time_ms: timeMs
+                )
+                try await insertSection(insert)
+                await dataProvider.loadAll()
+
+                addedSectionName = type.displayName
+                showingSectionAdded = true
+                try? await Task.sleep(for: .seconds(2))
+                showingSectionAdded = false
+            } catch {
+                print("[Section] Failed to add section: \(error)")
+            }
+        }
     }
 }
 

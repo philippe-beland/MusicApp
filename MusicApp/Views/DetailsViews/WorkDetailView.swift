@@ -113,7 +113,7 @@ struct WorkEditView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("General") {
+                SwiftUI.Section("General") {
                     TextField("Title", text: $title)
                     Picker("Type", selection: $workType) {
                         ForEach(WorkType.allCases, id: \.self) { t in
@@ -131,7 +131,7 @@ struct WorkEditView: View {
                     }
                 }
 
-                Section("Details") {
+                SwiftUI.Section("Details") {
                     TextField("Opus", text: $opus)
                     TextField("Label", text: $label)
                     TextField("Producer", text: $producer)
@@ -140,13 +140,13 @@ struct WorkEditView: View {
                     TextField("Premiere Location", text: $premiere)
                 }
 
-                Section("Notes") {
+                SwiftUI.Section("Notes") {
                     TextField("Notes", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
                 if let error = errorMessage {
-                    Section {
+                    SwiftUI.Section {
                         Text(error).foregroundStyle(.red)
                     }
                 }

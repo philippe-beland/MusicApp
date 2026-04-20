@@ -6,7 +6,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Account") {
+                SwiftUI.Section("Account") {
                     Button("Sign Out", role: .destructive) {
                         Task {
                             await auth.signOut()

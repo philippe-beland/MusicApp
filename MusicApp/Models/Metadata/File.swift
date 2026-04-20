@@ -25,6 +25,8 @@ struct File: Identifiable, Hashable, Codable {
         let filename = url.deletingPathExtension().lastPathComponent
         let parts = filename.split(separator: "-").map { $0.trimmingCharacters(in: .whitespaces) }
         guard parts.count > 1 else { return nil }
-        return parts.last
+        return parts.last?
+            .replacingOccurrences(of: "_", with: " ")
+            .trimmingCharacters(in: .whitespaces)
     }
 }

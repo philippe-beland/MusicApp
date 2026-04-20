@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FileListSection: View {
     let files: [File]
+    let piece: Piece
     let work: Work
 
     @Environment(AudioPlayerManager.self) private var audioManager
@@ -116,6 +117,14 @@ struct FileListSection: View {
                 }
             }
         case .pdfScore:
+            // Load the piece's audio if not already playing it
+            if audioManager.nowPlayingPiece?.id != piece.id,
+               let audioFile = piece.files?.first(where: { $0.sourceType == .audio }),
+               let audioURL = audioFile.storageURL {
+                audioManager.load(url: audioURL)
+                audioManager.nowPlayingPiece = piece
+                audioManager.nowPlayingWork = work
+            }
             selectedPDF = file
         default:
             break
@@ -150,7 +159,7 @@ struct FileListSection: View {
 
     private func fileLabel(for file: File) -> String {
         if file.sourceType == .pdfScore, let instrument = file.instrumentName {
-            return "PDF Score — \(instrument)"
+            return instrument
         }
         switch file.sourceType {
         case .audio: return "Audio"

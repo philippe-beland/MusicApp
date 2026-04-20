@@ -28,7 +28,7 @@ struct Piece: Identifiable, Hashable, Codable {
     var timecode: String?
     
     //var parts: [Part]?
-    //var sections: [Section]?
+    var sections: [Section]?
     var files: [File]?
 
 }

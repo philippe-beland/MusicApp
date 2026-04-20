@@ -66,6 +66,23 @@ struct FileRow: Codable, Sendable {
     let is_primary: Bool?
 }
 
+struct SectionRow: Codable, Sendable {
+    let id: UUID
+    let piece_id: UUID?
+    let parent_section_id: UUID?
+    let label: String?
+    let section_type: String?
+    let start_measure: Int?
+    let end_measure: Int?
+    let start_time_ms: Int?
+    let end_time_ms: Int?
+    let key_context: String?
+    let time_signature: String?
+    let tempo_bpm: Double?
+    let order_index: Int?
+    let notes: String?
+}
+
 // MARK: - Row → Model Mapping
 
 extension ArtistRow {
@@ -99,8 +116,30 @@ extension FileRow {
     }
 }
 
+extension SectionRow {
+    func toSection(children: [Section] = []) -> Section {
+        Section(
+            id: id,
+            pieceId: piece_id,
+            parentSectionId: parent_section_id,
+            label: label,
+            sectionType: SectionType(rawValue: section_type ?? "") ?? .other,
+            startMeasure: start_measure,
+            endMeasure: end_measure,
+            startTimeMs: start_time_ms.map { Double($0) },
+            endTimeMs: end_time_ms.map { Double($0) },
+            keyContext: key_context,
+            timeSignature: time_signature,
+            tempoBPM: tempo_bpm,
+            orderIndex: order_index,
+            notes: notes,
+            children: children
+        )
+    }
+}
+
 extension PieceRow {
-    func toPiece(files: [File] = []) -> Piece {
+    func toPiece(files: [File] = [], sections: [Section] = []) -> Piece {
         Piece(
             id: id,
             Work: nil,
@@ -123,6 +162,7 @@ extension PieceRow {
             form: form,
             sceneDescription: scene_description,
             timecode: time_code,
+            sections: sections.isEmpty ? nil : sections,
             files: files.isEmpty ? nil : files
         )
     }
@@ -209,22 +249,60 @@ func fetchWorksWithPieces() async throws -> [Work] {
         .execute()
         .value
 
+    // Fetch all sections
+    let sectionRows: [SectionRow] = try await supabase
+        .from("section")
+        .select()
+        .execute()
+        .value
+
     // Group files by piece_id
     let filesByPiece = Dictionary(grouping: fileRows, by: { $0.piece_id })
+
+    // Build section trees grouped by piece_id
+    let sectionsByPiece = buildSectionTrees(from: sectionRows)
 
     // Group pieces by work_id
     let piecesByWork = Dictionary(grouping: pieceRows, by: { $0.work_id })
 
-    // Assemble works with their pieces and files
+    // Assemble works with their pieces, files, and sections
     return workRows.map { row in
         let pieces = (piecesByWork[row.id] ?? [])
             .sorted { ($0.piece_number ?? 0) < ($1.piece_number ?? 0) }
             .map { pieceRow in
                 let files = (filesByPiece[pieceRow.id] ?? []).map { $0.toFile() }
-                return pieceRow.toPiece(files: files)
+                let sections = sectionsByPiece[pieceRow.id] ?? []
+                return pieceRow.toPiece(files: files, sections: sections)
             }
         return row.toWork(pieces: pieces)
     }
+}
+
+// MARK: - Section Tree Builder
+
+/// Groups section rows by piece_id and builds parent/child trees, returning top-level sections per piece.
+private func buildSectionTrees(from rows: [SectionRow]) -> [UUID: [Section]] {
+    let byPiece = Dictionary(grouping: rows, by: { $0.piece_id })
+    var result: [UUID: [Section]] = [:]
+
+    for (pieceId, pieceRows) in byPiece {
+        guard let pieceId else { continue }
+
+        // Group by parent_section_id
+        let byParent = Dictionary(grouping: pieceRows, by: { $0.parent_section_id })
+
+        // Recursive function to build children
+        func buildChildren(parentId: UUID?) -> [Section] {
+            (byParent[parentId] ?? [])
+                .sorted { ($0.order_index ?? 0) < ($1.order_index ?? 0) }
+                .map { row in
+                    row.toSection(children: buildChildren(parentId: row.id))
+                }
+        }
+
+        result[pieceId] = buildChildren(parentId: nil)
+    }
+    return result
 }
 
 // MARK: - Update DTOs
@@ -267,6 +345,17 @@ struct PieceUpdate: Codable, Sendable {
     var form: String?
 }
 
+struct SectionInsert: Codable, Sendable {
+    var piece_id: UUID
+    var parent_section_id: UUID?
+    var label: String?
+    var section_type: String
+    var start_time_ms: Int?
+    var end_time_ms: Int?
+    var order_index: Int?
+    var notes: String?
+}
+
 // MARK: - Update Functions
 
 func updateArtist(id: UUID, update: ArtistUpdate) async throws {
@@ -292,3 +381,18 @@ func updatePiece(id: UUID, update: PieceUpdate) async throws {
         .eq("id", value: id)
         .execute()
 }
+func insertSection(_ section: SectionInsert) async throws {
+    try await supabase
+        .from("section")
+        .insert(section)
+        .execute()
+}
+
+func deleteSection(id: UUID) async throws {
+    try await supabase
+        .from("section")
+        .delete()
+        .eq("id", value: id)
+        .execute()
+}
+

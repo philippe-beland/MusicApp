@@ -23,6 +23,25 @@ struct PDFViewerView: View {
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
+                    .overlay {
+                        HStack(spacing: 0) {
+                            Button("") {
+                                if currentPage > 0 {
+                                    withAnimation { currentPage -= 1 }
+                                }
+                            }
+                            .keyboardShortcut(.leftArrow, modifiers: [])
+
+                            Button("") {
+                                if currentPage < pageCount - 1 {
+                                    withAnimation { currentPage += 1 }
+                                }
+                            }
+                            .keyboardShortcut(.rightArrow, modifiers: [])
+                        }
+                        .opacity(0)
+                        .allowsHitTesting(false)
+                    }
 
                     if pageCount > 1 {
                         Text("\(currentPage + 1) / \(pageCount)")
