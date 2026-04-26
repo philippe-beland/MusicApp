@@ -281,25 +281,29 @@ struct PieceListRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Tap area: play audio
-            Button {
-                onPlay?()
-            } label: {
-                HStack {
-                    Group {
-                        if isPlaying {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .foregroundStyle(.tint)
-                                .font(.caption)
-                        } else {
-                            Text("\(index + 1)")
-                                .foregroundStyle(hasAudio ? .primary : .secondary)
-                        }
-                    }
-                    .font(.subheadline)
-                    .frame(width: 28, alignment: .trailing)
+        HStack(spacing: 8) {
+            // Track number
+            Text("\(index + 1)")
+                .font(.subheadline)
+                .foregroundStyle(isPlaying ? Color.accentColor : .secondary)
+                .frame(width: 20, alignment: .trailing)
 
+            // Play button
+            if hasAudio {
+                Button {
+                    onPlay?()
+                } label: {
+                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle")
+                        .font(.body)
+                        .foregroundStyle(isPlaying ? Color.accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 20)
+            }
+
+            // Row taps → PieceDetailView
+            NavigationLink(destination: PieceDetailView(piece: piece, work: work)) {
+                HStack {
                     Text(piece.title)
                         .font(.body)
                         .foregroundStyle(isPlaying ? Color.accentColor : .primary)
@@ -314,16 +318,6 @@ struct PieceListRow: View {
                     }
                 }
                 .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(!hasAudio)
-
-            // Info button → detail view
-            NavigationLink(destination: PieceDetailView(piece: piece, work: work)) {
-                Image(systemName: "ellipsis.circle")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 12)
             }
             .buttonStyle(.plain)
         }

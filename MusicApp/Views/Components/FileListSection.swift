@@ -12,35 +12,102 @@ struct FileListSection: View {
         files.first(where: { $0.sourceType == .audio })?.storageURL
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Files")
-                .font(.title3.bold())
+    private var pdfFiles: [File] {
+        files.filter { $0.sourceType == .pdfScore }
+    }
 
-            ForEach(files) { file in
-                fileRow(file)
+    private var otherFiles: [File] {
+        files.filter { $0.sourceType != .audio && $0.sourceType != .pdfScore }
+    }
+
+    private var hasAudio: Bool {
+        audioURL != nil
+    }
+
+    private var isPlayingThisPiece: Bool {
+        audioManager.nowPlayingPiece?.id == piece.id
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Play button
+            Button {
+                if isPlayingThisPiece {
+                    audioManager.playPause()
+                } else {
+                    audioManager.play(piece: piece, work: work)
+                }
+            } label: {
+                HStack {
+                    Image(systemName: isPlayingThisPiece && audioManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title)
+                    Text(isPlayingThisPiece && audioManager.isPlaying ? "Pause" : "Play")
+                        .font(.headline)
+                }
+                .foregroundStyle(hasAudio ? Color.accentColor : .secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(.fill.quaternary)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .disabled(!hasAudio)
+
+            // PDF scores grid
+            if !pdfFiles.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Sheet Music")
+                        .font(.title3.bold())
+
+                    LazyVGrid(columns: [
+                        GridItem(.adaptive(minimum: 100), spacing: 12)
+                    ], spacing: 12) {
+                        ForEach(pdfFiles) { file in
+                            Button {
+                                handleTap(file)
+                            } label: {
+                                VStack(spacing: 6) {
+                                    Image(systemName: "doc.richtext")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(.red)
+                                    Text(fileLabel(for: file))
+                                        .font(.caption.weight(.medium))
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(.fill.quaternary)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(file.storageURL == nil)
+                        }
+                    }
+                }
             }
 
-            // Inline audio player when playing a file from this piece
-            if let piece = audioManager.nowPlayingPiece,
-               files.contains(where: { file in file.sourceType == .audio && piece.files?.contains(where: { f in f.id == file.id }) ?? false }),
-               audioManager.isLoaded {
-                AudioPlayerView(manager: audioManager)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+            // Other files (MusicXML, MIDI, etc.)
+            if !otherFiles.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Files")
+                        .font(.title3.bold())
+
+                    ForEach(otherFiles) { file in
+                        fileRow(file)
+                    }
+                }
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: audioManager.nowPlayingPiece?.id)
         .fullScreenCover(item: $selectedPDF) { file in
             if let url = file.storageURL {
                 NavigationStack {
-                    ZStack(alignment: .bottom) {
-                        PDFViewerView(url: url)
-                            .ignoresSafeArea(edges: .bottom)
-
-                        if audioManager.isLoaded {
-                            MiniPlayerBar(manager: audioManager)
+                    PDFViewerView(url: url)
+                        .safeAreaInset(edge: .bottom) {
+                            if audioManager.isLoaded {
+                                MiniPlayerBar(manager: audioManager)
+                            }
                         }
-                    }
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Done") { selectedPDF = nil }
@@ -85,16 +152,6 @@ struct FileListSection: View {
                 }
 
                 Spacer()
-
-                if isPlayable(file) {
-                    Image(systemName: audioManager.nowPlayingPiece != nil && audioManager.isPlaying ? "stop.fill" : "play.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if file.sourceType == .pdfScore {
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
@@ -107,17 +164,7 @@ struct FileListSection: View {
 
     private func handleTap(_ file: File) {
         switch file.sourceType {
-        case .audio:
-            if let url = file.storageURL {
-                if audioManager.isLoaded {
-                    audioManager.stop()
-                } else {
-                    audioManager.load(url: url)
-                    audioManager.playPause()
-                }
-            }
         case .pdfScore:
-            // Load the piece's audio if not already playing it
             if audioManager.nowPlayingPiece?.id != piece.id,
                let audioFile = piece.files?.first(where: { $0.sourceType == .audio }),
                let audioURL = audioFile.storageURL {
@@ -129,10 +176,6 @@ struct FileListSection: View {
         default:
             break
         }
-    }
-
-    private func isPlayable(_ file: File) -> Bool {
-        file.sourceType == .audio
     }
 
     private func iconName(for type: SourceType) -> String {

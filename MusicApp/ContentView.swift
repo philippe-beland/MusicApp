@@ -15,7 +15,7 @@ struct ContentView: View {
                         Label("Settings", systemImage: "gear")
                     }
             }
-            .padding(.bottom, audioManager.isLoaded ? 56 : 0)
+            .padding(.bottom, audioManager.isLoaded ? 80 : 0)
 
             if audioManager.isLoaded {
                 VStack(spacing: 0) {

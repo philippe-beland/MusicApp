@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import MediaPlayer
 
 enum PlaybackSpeed: CaseIterable, Identifiable {
     case half, twoThirds, threeQuarters, ninety, normal, oneAndQuarter, oneAndHalf, double
@@ -42,6 +43,7 @@ class AudioPlayerManager {
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var remoteCommandsConfigured = false
 
     var isPlaying = false
     var isLoaded = false
@@ -52,6 +54,106 @@ class AudioPlayerManager {
     var volume: Float = 1.0
     var nowPlayingPiece: Piece?
     var nowPlayingWork: Work?
+
+    init() {
+        configureAudioSession()
+        configureRemoteCommands()
+    }
+
+    private func configureAudioSession() {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playback, mode: .default)
+            try session.setActive(true)
+        } catch {
+            print("[Audio] Failed to configure audio session: \(error)")
+        }
+        #endif
+    }
+
+    private func configureRemoteCommands() {
+        guard !remoteCommandsConfigured else { return }
+        remoteCommandsConfigured = true
+
+        let center = MPRemoteCommandCenter.shared()
+
+        center.playCommand.addTarget { [weak self] _ in
+            self?.playPause()
+            return .success
+        }
+        center.pauseCommand.addTarget { [weak self] _ in
+            self?.playPause()
+            return .success
+        }
+        center.togglePlayPauseCommand.addTarget { [weak self] _ in
+            self?.playPause()
+            return .success
+        }
+        center.nextTrackCommand.addTarget { [weak self] _ in
+            self?.skipForward()
+            return .success
+        }
+        center.previousTrackCommand.addTarget { [weak self] _ in
+            self?.skipBackward()
+            return .success
+        }
+        center.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let self,
+                  let posEvent = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            let fraction = self.duration > 0 ? posEvent.positionTime / self.duration : 0
+            self.seek(to: fraction)
+            return .success
+        }
+    }
+
+    private var cachedArtwork: MPMediaItemArtwork?
+    private var cachedArtworkURL: URL?
+
+    private func updateNowPlayingInfo() {
+        var info = [String: Any]()
+        if let piece = nowPlayingPiece {
+            info[MPMediaItemPropertyTitle] = piece.title
+        }
+        if let work = nowPlayingWork {
+            info[MPMediaItemPropertyArtist] = work.artist.name
+            info[MPMediaItemPropertyAlbumTitle] = work.title
+        }
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        info[MPMediaItemPropertyPlaybackDuration] = duration
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackRate) : 0.0
+
+        if let artwork = cachedArtwork {
+            info[MPMediaItemPropertyArtwork] = artwork
+        }
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    private func loadArtwork() {
+        guard let url = nowPlayingWork?.artworkURL else {
+            cachedArtwork = nil
+            cachedArtworkURL = nil
+            return
+        }
+        // Don't reload if already cached for this URL
+        guard url != cachedArtworkURL else { return }
+        cachedArtworkURL = url
+
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                guard let image = UIImage(data: data) else { return }
+                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                await MainActor.run {
+                    self.cachedArtwork = artwork
+                    self.updateNowPlayingInfo()
+                }
+            } catch {
+                print("[Audio] Failed to load artwork: \(error)")
+            }
+        }
+    }
 
     /// Play a piece's first audio file. Toggles play/pause if already playing this piece.
     func play(piece: Piece, work: Work) {
@@ -64,6 +166,8 @@ class AudioPlayerManager {
         load(url: url)
         nowPlayingPiece = piece
         nowPlayingWork = work
+        loadArtwork()
+        updateNowPlayingInfo()
         playPause()
     }
 
@@ -89,9 +193,10 @@ class AudioPlayerManager {
             queue: .main
         ) { [weak self] time in
             self?.currentTime = CMTimeGetSeconds(time)
-            // Save position every few seconds
+            // Save position and update Now Playing every few seconds
             if let self, Int(self.currentTime) % 3 == 0 {
                 self.saveState()
+                self.updateNowPlayingInfo()
             }
         }
 
@@ -132,6 +237,7 @@ class AudioPlayerManager {
             player.rate = playbackRate
         }
         isPlaying.toggle()
+        updateNowPlayingInfo()
     }
 
     func setRate(_ rate: Float) {
@@ -192,6 +298,9 @@ class AudioPlayerManager {
         duration = 0
         nowPlayingPiece = nil
         nowPlayingWork = nil
+        cachedArtwork = nil
+        cachedArtworkURL = nil
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         clearSavedState()
     }
 
@@ -233,6 +342,7 @@ class AudioPlayerManager {
         load(url: url)
         nowPlayingPiece = piece
         nowPlayingWork = work
+        loadArtwork()
 
         // Seek to saved position once duration is known
         Task { @MainActor in
@@ -317,6 +427,7 @@ struct MiniPlayerBar: View {
     @State private var showingSectionAdded = false
     @State private var addedSectionName = ""
     @State private var capturedTimeMs: Int = 0
+    @State private var showingSectionPicker = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -380,19 +491,19 @@ struct MiniPlayerBar: View {
                 Spacer(minLength: 0)
 
                 // Right: Add Section, Speed, Volume
-                Menu {
-                    ForEach(SectionType.allCases, id: \.self) { type in
-                        Button(type.displayName) {
-                            addSection(type: type, timeMs: capturedTimeMs)
-                        }
-                    }
+                Button {
+                    capturedTimeMs = Int(manager.currentTime * 1000)
+                    showingSectionPicker = true
                 } label: {
                     Image(systemName: "plus.circle")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
-                .onTapGesture {
-                    capturedTimeMs = Int(manager.currentTime * 1000)
+                .popover(isPresented: $showingSectionPicker) {
+                    SectionTypePicker(genre: manager.nowPlayingWork?.genre ?? .other) { type in
+                        showingSectionPicker = false
+                        addSection(type: type, timeMs: capturedTimeMs)
+                    }
                 }
 
                 SpeedMenuView(manager: manager)
@@ -562,6 +673,37 @@ struct SeekBar: View {
             .animation(.easeOut(duration: 0.15), value: isSeeking)
         }
         .frame(height: 30)
+    }
+}
+
+// MARK: - Section Type Picker
+
+struct SectionTypePicker: View {
+    let genre: Genre
+    let onSelect: (SectionType) -> Void
+
+    private var types: [SectionType] {
+        SectionType.types(for: genre)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 4) {
+                ForEach(types, id: \.self) { type in
+                    Button {
+                        onSelect(type)
+                    } label: {
+                        Text(type.displayName)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .frame(width: 180, height: min(CGFloat(types.count) * 36 + 16, 400))
     }
 }
 

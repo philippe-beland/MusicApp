@@ -4,6 +4,7 @@ struct PieceDetailView: View {
     let piece: Piece
     let work: Work
     @Environment(DataProvider.self) private var dataProvider
+    @Environment(AudioPlayerManager.self) private var audioManager
     @State private var showingEdit = false
 
     /// Live piece from the data provider (reflects DB changes), falling back to the snapshot.
@@ -97,6 +98,8 @@ struct PieceDetailView: View {
                                     try? await deleteSection(id: sectionId)
                                     await dataProvider.loadAll()
                                 }
+                            }, onSeek: { ms in
+                                seekToMs(ms)
                             })
                         }
                     }
@@ -121,6 +124,16 @@ struct PieceDetailView: View {
         .sheet(isPresented: $showingEdit) {
             PieceEditView(piece: piece)
         }
+    }
+
+    private func seekToMs(_ ms: Double) {
+        // Load piece audio if not already playing this piece
+        if audioManager.nowPlayingPiece?.id != livePiece.id {
+            audioManager.play(piece: livePiece, work: work)
+        }
+        guard audioManager.duration > 0 else { return }
+        let fraction = (ms / 1000.0) / audioManager.duration
+        audioManager.seek(to: min(max(fraction, 0), 1))
     }
 }
 
@@ -246,6 +259,7 @@ struct SectionRowView: View {
     let section: Section
     let depth: Int
     var onDelete: ((UUID) -> Void)?
+    var onSeek: ((Double) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -267,18 +281,28 @@ struct SectionRowView: View {
 
                 Spacer()
 
-                // Time range
+                // Time range (tap to seek)
                 if let start = section.startTimeMs {
-                    Text(timeString(start) + (section.endTimeMs.map { " – " + timeString($0) } ?? ""))
-                        .font(.caption.monospacedDigit())
+                    Button {
+                        let seekMs = max(0, start - 2000)
+                        onSeek?(seekMs)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "play.circle")
+                                .font(.caption)
+                            Text(timeString(start) + (section.endTimeMs.map { " – " + timeString($0) } ?? ""))
+                                .font(.caption.monospacedDigit())
+                        }
                         .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
             // Children (indented)
             if !section.children.isEmpty {
                 ForEach(section.children) { child in
-                    SectionRowView(section: child, depth: depth + 1, onDelete: onDelete)
+                    SectionRowView(section: child, depth: depth + 1, onDelete: onDelete, onSeek: onSeek)
                         .padding(.leading, 16)
                 }
             }

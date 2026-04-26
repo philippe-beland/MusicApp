@@ -26,6 +26,24 @@ enum SectionType: String, Codable, CaseIterable {
             return rawValue.capitalized
         }
     }
+
+    /// Section types relevant to a given genre. Shared types (intro, outro, etc.) appear in all.
+    static func types(for genre: Genre) -> [SectionType] {
+        let shared: [SectionType] = [.intro, .outro, .interlude, .transition, .solo, .other]
+
+        switch genre {
+        case .classical:
+            return [.exposition, .development, .recapitulation, .coda, .theme, .variation, .scene] + shared
+        case .filmScore:
+            return [.theme, .variation, .scene, .coda] + shared
+        case .jazz:
+            return [.theme, .chorus, .verse, .bridge, .coda] + shared
+        case .rock, .pop, .electronic:
+            return [.verse, .preChorus, .chorus, .bridge] + shared
+        case .other:
+            return allCases
+        }
+    }
 }
 
 struct Section: Identifiable, Hashable, Codable {
