@@ -3,7 +3,19 @@ import SwiftUI
 struct WorkDetailView: View {
     let work: Work
     @Environment(AudioPlayerManager.self) private var audioManager
+    @Environment(DataProvider.self) private var dataProvider
     @State private var showingEdit = false
+    @State private var showingNewPiece = false
+    @State private var showingFilters = false
+
+    private var liveWork: Work {
+        dataProvider.works.first(where: { $0.id == work.id }) ?? work
+    }
+
+    private var displayedPieces: [Piece] {
+        guard dataProvider.isFiltering else { return liveWork.pieces }
+        return liveWork.pieces.filter { dataProvider.piecePassesFilters($0) }
+    }
 
     var body: some View {
         ScrollView {
@@ -36,23 +48,34 @@ struct WorkDetailView: View {
                 // Details
                 WorkMetadataSection(work: work)
 
+                if showingFilters {
+                    StatusFilterBar()
+                        .padding(.horizontal)
+                }
+
                 // Pieces
-                if !work.pieces.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
+                if !displayedPieces.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
                         Text(work.workType == .symphony ? "Movements" : "Tracks")
                             .font(.title3.bold())
                             .padding(.horizontal)
-                            .padding(.bottom, 4)
+                            .padding(.bottom, 8)
 
-                        ForEach(Array(work.pieces.enumerated()), id: \.element.id) { index, piece in
-                            PieceListRow(
-                                piece: piece,
-                                work: work,
-                                index: index,
-                                isPlaying: audioManager.nowPlayingPiece?.id == piece.id && audioManager.isPlaying,
-                                onPlay: { audioManager.play(piece: piece, work: work) }
-                            )
+                        VStack(spacing: 1) {
+                            ForEach(displayedPieces) { piece in
+                                let originalIndex = liveWork.pieces.firstIndex(where: { $0.id == piece.id }) ?? 0
+                                PieceListRow(
+                                    piece: piece,
+                                    work: liveWork,
+                                    index: originalIndex,
+                                    isPlaying: audioManager.nowPlayingPiece?.id == piece.id && audioManager.isPlaying,
+                                    onPlay: { audioManager.play(piece: piece, work: liveWork) }
+                                )
+                            }
                         }
+                        .background(.fill.quaternary)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal)
                     }
                 }
             }
@@ -61,12 +84,23 @@ struct WorkDetailView: View {
         .navigationTitle(work.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            StatusFilterToolbar(showingFilters: $showingFilters)
             ToolbarItem(placement: .primaryAction) {
-                Button("Edit") { showingEdit = true }
+                HStack {
+                    Button {
+                        showingNewPiece = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    Button("Edit") { showingEdit = true }
+                }
             }
         }
         .sheet(isPresented: $showingEdit) {
             WorkEditView(work: work)
+        }
+        .sheet(isPresented: $showingNewPiece) {
+            NewPieceView(work: work)
         }
     }
 }
@@ -280,49 +314,84 @@ struct PieceListRow: View {
         piece.files?.contains(where: { $0.sourceType == .audio }) ?? false
     }
 
+    private var pdfCount: Int {
+        piece.files?.filter { $0.sourceType == .pdfScore }.count ?? 0
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
-            // Track number
-            Text("\(index + 1)")
-                .font(.subheadline)
-                .foregroundStyle(isPlaying ? Color.accentColor : .secondary)
-                .frame(width: 20, alignment: .trailing)
-
-            // Play button
-            if hasAudio {
-                Button {
-                    onPlay?()
-                } label: {
-                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle")
-                        .font(.body)
-                        .foregroundStyle(isPlaying ? Color.accentColor : .secondary)
+        HStack(spacing: 12) {
+            // Track number / play button
+            Button {
+                onPlay?()
+            } label: {
+                ZStack {
+                    if isPlaying {
+                        Image(systemName: "pause.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 32, height: 32)
+                            .background(Color.accentColor)
+                            .clipShape(Circle())
+                    } else {
+                        Text("\(index + 1)")
+                            .font(.subheadline.weight(.medium).monospacedDigit())
+                            .foregroundStyle(hasAudio ? .primary : .tertiary)
+                            .frame(width: 32, height: 32)
+                    }
                 }
-                .buttonStyle(.plain)
-                .frame(width: 20)
             }
+            .buttonStyle(.plain)
+            .disabled(!hasAudio)
 
-            // Row taps → PieceDetailView
+            // Title + metadata
             NavigationLink(destination: PieceDetailView(piece: piece, work: work)) {
-                HStack {
-                    Text(piece.title)
-                        .font(.body)
-                        .foregroundStyle(isPlaying ? Color.accentColor : .primary)
-                        .lineLimit(1)
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(piece.title)
+                            .font(.body)
+                            .foregroundStyle(isPlaying ? Color.accentColor : .primary)
+                            .lineLimit(1)
+
+                        HStack(spacing: 6) {
+                            if let ms = piece.durationMS {
+                                Text(formatDuration(ms))
+                            }
+                            if let key = piece.keySignature {
+                                Text("·")
+                                Text(key)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
 
                     Spacer()
 
-                    if let ms = piece.durationMS {
-                        Text(formatDuration(ms))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    // Badges
+                    HStack(spacing: 6) {
+                        if pdfCount > 0 {
+                            Label("\(pdfCount)", systemImage: "doc.richtext")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let sections = piece.sections, !sections.isEmpty {
+                            Label("\(sections.count)", systemImage: "list.bullet")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(isPlaying ? Color.accentColor.opacity(0.08) : .clear)
     }
 
     private func formatDuration(_ ms: Int) -> String {
@@ -333,4 +402,62 @@ struct PieceListRow: View {
     }
 }
 
+// MARK: - New Piece View
 
+struct NewPieceView: View {
+    @Environment(DataProvider.self) private var dataProvider
+    @Environment(\.dismiss) private var dismiss
+
+    let work: Work
+    @State private var title = ""
+    @State private var pieceNumber = ""
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                SwiftUI.Section("General") {
+                    TextField("Title", text: $title)
+                    TextField("Track Number", text: $pieceNumber)
+                        .keyboardType(.numberPad)
+                }
+
+                if let error = errorMessage {
+                    SwiftUI.Section {
+                        Text(error).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("New Piece")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { create() }
+                        .disabled(title.isEmpty || isSaving)
+                }
+            }
+        }
+    }
+
+    private func create() {
+        isSaving = true
+        errorMessage = nil
+        Task {
+            do {
+                try await dataProvider.createPiece(
+                    workId: work.id,
+                    title: title,
+                    pieceNumber: Int(pieceNumber)
+                )
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isSaving = false
+        }
+    }
+}

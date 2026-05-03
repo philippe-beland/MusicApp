@@ -1,4 +1,49 @@
 import Foundation
+import SwiftUI
+
+enum PieceStatusFilter: String, CaseIterable {
+    case listened, scoreRead, transcribed, analyzed, played
+
+    var label: String {
+        switch self {
+        case .listened: "Listened"
+        case .scoreRead: "Score"
+        case .transcribed: "Transcribed"
+        case .analyzed: "Analyzed"
+        case .played: "Played"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .listened: "ear"
+        case .scoreRead: "book"
+        case .transcribed: "list.clipboard"
+        case .analyzed: "chart.bar.doc.horizontal"
+        case .played: "guitars"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .listened: .blue
+        case .scoreRead: .orange
+        case .transcribed: .green
+        case .analyzed: .purple
+        case .played: .red
+        }
+    }
+
+    func isCompleted(in piece: Piece) -> Bool {
+        switch self {
+        case .listened: piece.listened
+        case .scoreRead: piece.scoreRead
+        case .transcribed: piece.transcribed
+        case .analyzed: piece.analyzed
+        case .played: piece.played
+        }
+    }
+}
 
 @Observable
 class DataProvider {
@@ -6,6 +51,42 @@ class DataProvider {
     var works: [Work] = []
     var isLoading = false
     var error: String?
+
+    // Active filters — when a filter is on, pieces that already have that status are hidden
+    var activeFilters: Set<PieceStatusFilter> = []
+
+    var isFiltering: Bool { !activeFilters.isEmpty }
+
+    func piecePassesFilters(_ piece: Piece) -> Bool {
+        for filter in activeFilters {
+            if filter.isCompleted(in: piece) { return false }
+        }
+        return true
+    }
+
+    var filteredWorks: [Work] {
+        guard isFiltering else { return works }
+        return works.compactMap { work in
+            let kept = work.pieces.filter { piecePassesFilters($0) }
+            guard !kept.isEmpty else { return nil }
+            var filtered = work
+            filtered.pieces = kept
+            return filtered
+        }
+    }
+
+    func filteredArtists(from artistList: [Artist], works workList: [Work]) -> [Artist] {
+        guard isFiltering else { return artistList }
+        let worksWithPieces = (workList.isEmpty ? filteredWorks : workList.compactMap { work in
+            let kept = work.pieces.filter { piecePassesFilters($0) }
+            guard !kept.isEmpty else { return nil }
+            var filtered = work
+            filtered.pieces = kept
+            return filtered
+        })
+        let artistIdsWithWork = Set(worksWithPieces.map(\.artist.id))
+        return artistList.filter { artistIdsWithWork.contains($0.id) }
+    }
 
     func loadAll() async {
         isLoading = true
@@ -72,9 +153,46 @@ class DataProvider {
             duration_ms: piece.durationMS,
             feel: piece.feel,
             genre: piece.genre?.rawValue,
-            form: piece.form
+            form: piece.form,
+            listened: piece.listened,
+            score_read: piece.scoreRead,
+            transcribed: piece.transcribed,
+            analyzed: piece.analyzed,
+            played: piece.played
         )
         try await updatePiece(id: piece.id, update: update)
+        await loadAll()
+    }
+
+    func createArtist(name: String, type: ArtistType, genre: Genre, country: String?) async throws {
+        let insert = ArtistInsert(
+            name: name,
+            type: type.rawValue,
+            genre: genre.rawValue,
+            country: country
+        )
+        try await insertArtist(insert)
+        await loadAll()
+    }
+
+    func createWork(artistId: UUID, title: String, workType: WorkType, genre: Genre) async throws {
+        let insert = WorkInsert(
+            artist_id: artistId,
+            title: title,
+            work_type: workType.rawValue,
+            genre: genre.rawValue
+        )
+        try await insertWork(insert)
+        await loadAll()
+    }
+
+    func createPiece(workId: UUID, title: String, pieceNumber: Int?) async throws {
+        let insert = PieceInsert(
+            work_id: workId,
+            title: title,
+            piece_number: pieceNumber
+        )
+        try await insertPiece(insert)
         await loadAll()
     }
 }

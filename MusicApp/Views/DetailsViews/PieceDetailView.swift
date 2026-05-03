@@ -35,6 +35,10 @@ struct PieceDetailView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top)
 
+                // Status toggles
+                PieceStatusRow(piece: livePiece)
+                    .padding(.horizontal)
+
                 Divider()
 
                 // Musical details
@@ -344,6 +348,119 @@ struct SectionRowView: View {
         case .theme, .variation: .cyan
         case .scene: .pink
         case .other: .secondary
+        }
+    }
+}
+
+// MARK: - Piece Status Row
+
+struct PieceStatusRow: View {
+    let piece: Piece
+    @Environment(DataProvider.self) private var dataProvider
+
+    private struct StatusItem {
+        let label: String
+        let icon: String
+        let color: Color
+        let isOn: Bool
+        let keyPath: WritableKeyPath<Piece, Bool>
+    }
+
+    private var items: [StatusItem] {
+        [
+            StatusItem(label: "Listened", icon: "ear", color: .blue, isOn: piece.listened, keyPath: \.listened),
+            StatusItem(label: "Score", icon: "book", color: .orange, isOn: piece.scoreRead, keyPath: \.scoreRead),
+            StatusItem(label: "Transcribed", icon: "list.clipboard", color: .green, isOn: piece.transcribed, keyPath: \.transcribed),
+            StatusItem(label: "Analyzed", icon: "chart.bar.doc.horizontal", color: .purple, isOn: piece.analyzed, keyPath: \.analyzed),
+            StatusItem(label: "Played", icon: "guitars", color: .red, isOn: piece.played, keyPath: \.played),
+        ]
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(items, id: \.label) { item in
+                Button {
+                    toggle(item.keyPath)
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: item.icon)
+                            .symbolVariant(item.isOn ? .fill : .none)
+                            .font(.title3)
+                            .foregroundStyle(item.isOn ? item.color : .secondary)
+                            .frame(width: 32, height: 32)
+                        Text(item.label)
+                            .font(.system(size: 9))
+                            .foregroundStyle(item.isOn ? .primary : .tertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 8)
+        .background(.fill.quaternary)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func toggle(_ keyPath: WritableKeyPath<Piece, Bool>) {
+        var updated = piece
+        updated[keyPath: keyPath].toggle()
+        Task {
+            try? await dataProvider.savePiece(updated)
+        }
+    }
+}
+
+// MARK: - Status Filter Bar
+
+struct StatusFilterBar: View {
+    @Environment(DataProvider.self) private var dataProvider
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(PieceStatusFilter.allCases, id: \.self) { filter in
+                let isActive = dataProvider.activeFilters.contains(filter)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if isActive {
+                            dataProvider.activeFilters.remove(filter)
+                        } else {
+                            dataProvider.activeFilters.insert(filter)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: filter.icon)
+                            .font(.body)
+                        if isActive {
+                            Text(filter.label)
+                                .font(.caption.weight(.medium))
+                        }
+                    }
+                    .padding(.horizontal, isActive ? 12 : 10)
+                    .padding(.vertical, 8)
+                    .background(isActive ? AnyShapeStyle(filter.color.opacity(0.15)) : AnyShapeStyle(.fill.quaternary))
+                    .foregroundStyle(isActive ? filter.color : .secondary)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+struct StatusFilterToolbar: ToolbarContent {
+    @Environment(DataProvider.self) private var dataProvider
+    @Binding var showingFilters: Bool
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                withAnimation { showingFilters.toggle() }
+            } label: {
+                Image(systemName: dataProvider.isFiltering ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                    .foregroundStyle(dataProvider.isFiltering ? Color.accentColor : .secondary)
+            }
         }
     }
 }

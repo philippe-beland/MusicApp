@@ -3,10 +3,28 @@ import SwiftUI
 struct ArtistDetailView: View {
     let artist: Artist
     let works: [Work]
+    @Environment(DataProvider.self) private var dataProvider
     @State private var showingEdit = false
+    @State private var showingNewWork = false
+    @State private var showingFilters = false
+
+    private var liveWorks: [Work] {
+        dataProvider.works.filter { $0.artist.id == artist.id }
+    }
+
+    private var displayedWorks: [Work] {
+        guard dataProvider.isFiltering else { return liveWorks }
+        return liveWorks.compactMap { work in
+            let kept = work.pieces.filter { dataProvider.piecePassesFilters($0) }
+            guard !kept.isEmpty else { return nil }
+            var filtered = work
+            filtered.pieces = kept
+            return filtered
+        }
+    }
 
     private var sortedWorks: [Work] {
-        works.sorted {
+        displayedWorks.sorted {
             ($0.releaseDate ?? .distantFuture) < ($1.releaseDate ?? .distantFuture)
         }
     }
@@ -14,6 +32,10 @@ struct ArtistDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                if showingFilters {
+                    StatusFilterBar()
+                        .padding(.horizontal)
+                }
                 // Artist header
                 VStack(spacing: 12) {
                     ArtistAvatarPlaceholder(artist: artist, size: 120)
@@ -76,12 +98,23 @@ struct ArtistDetailView: View {
         .navigationTitle(artist.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            StatusFilterToolbar(showingFilters: $showingFilters)
             ToolbarItem(placement: .primaryAction) {
-                Button("Edit") { showingEdit = true }
+                HStack {
+                    Button {
+                        showingNewWork = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    Button("Edit") { showingEdit = true }
+                }
             }
         }
         .sheet(isPresented: $showingEdit) {
             ArtistEditView(artist: artist)
+        }
+        .sheet(isPresented: $showingNewWork) {
+            NewWorkView(artist: artist)
         }
     }
 }
@@ -211,4 +244,77 @@ struct ArtistEditView: View {
     }
 }
 
+// MARK: - New Work View
 
+struct NewWorkView: View {
+    @Environment(DataProvider.self) private var dataProvider
+    @Environment(\.dismiss) private var dismiss
+
+    let artist: Artist
+    @State private var title = ""
+    @State private var workType: WorkType = .album
+    @State private var genre: Genre
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(artist: Artist) {
+        self.artist = artist
+        _genre = State(initialValue: artist.genres)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                SwiftUI.Section("General") {
+                    TextField("Title", text: $title)
+                    Picker("Type", selection: $workType) {
+                        ForEach(WorkType.allCases, id: \.self) { t in
+                            Text(t.rawValue.capitalized).tag(t)
+                        }
+                    }
+                    Picker("Genre", selection: $genre) {
+                        ForEach(Genre.allCases, id: \.self) { g in
+                            Text(g.displayName).tag(g)
+                        }
+                    }
+                }
+
+                if let error = errorMessage {
+                    SwiftUI.Section {
+                        Text(error).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("New Work")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { create() }
+                        .disabled(title.isEmpty || isSaving)
+                }
+            }
+        }
+    }
+
+    private func create() {
+        isSaving = true
+        errorMessage = nil
+        Task {
+            do {
+                try await dataProvider.createWork(
+                    artistId: artist.id,
+                    title: title,
+                    workType: workType,
+                    genre: genre
+                )
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isSaving = false
+        }
+    }
+}

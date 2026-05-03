@@ -55,6 +55,11 @@ struct PieceRow: Codable, Sendable {
     let form: String?
     let scene_description: String?
     let time_code: String?
+    let listened: Bool?
+    let score_read: Bool?
+    let transcribed: Bool?
+    let analyzed: Bool?
+    let played: Bool?
 }
 
 struct FileRow: Codable, Sendable {
@@ -162,6 +167,11 @@ extension PieceRow {
             form: form,
             sceneDescription: scene_description,
             timecode: time_code,
+            listened: listened ?? false,
+            scoreRead: score_read ?? false,
+            transcribed: transcribed ?? false,
+            analyzed: analyzed ?? false,
+            played: played ?? false,
             sections: sections.isEmpty ? nil : sections,
             files: files.isEmpty ? nil : files
         )
@@ -343,6 +353,11 @@ struct PieceUpdate: Codable, Sendable {
     var feel: String?
     var genre: String?
     var form: String?
+    var listened: Bool?
+    var score_read: Bool?
+    var transcribed: Bool?
+    var analyzed: Bool?
+    var played: Bool?
 }
 
 struct SectionInsert: Codable, Sendable {
@@ -354,6 +369,26 @@ struct SectionInsert: Codable, Sendable {
     var end_time_ms: Int?
     var order_index: Int?
     var notes: String?
+}
+
+struct ArtistInsert: Codable, Sendable {
+    var name: String
+    var type: String?
+    var genre: String?
+    var country: String?
+}
+
+struct WorkInsert: Codable, Sendable {
+    var artist_id: UUID
+    var title: String
+    var work_type: String?
+    var genre: String?
+}
+
+struct PieceInsert: Codable, Sendable {
+    var work_id: UUID
+    var title: String
+    var piece_number: Int?
 }
 
 // MARK: - Update Functions
@@ -393,6 +428,27 @@ func deleteSection(id: UUID) async throws {
         .from("section")
         .delete()
         .eq("id", value: id)
+        .execute()
+}
+
+func insertArtist(_ artist: ArtistInsert) async throws {
+    try await supabase
+        .from("artist")
+        .insert(artist)
+        .execute()
+}
+
+func insertWork(_ work: WorkInsert) async throws {
+    try await supabase
+        .from("work")
+        .insert(work)
+        .execute()
+}
+
+func insertPiece(_ piece: PieceInsert) async throws {
+    try await supabase
+        .from("piece")
+        .insert(piece)
         .execute()
 }
 

@@ -63,21 +63,23 @@ struct FileListSection: View {
                         GridItem(.adaptive(minimum: 100), spacing: 12)
                     ], spacing: 12) {
                         ForEach(pdfFiles) { file in
+                            let color = instrumentColor(for: file)
                             Button {
                                 handleTap(file)
                             } label: {
                                 VStack(spacing: 6) {
                                     Image(systemName: "doc.richtext")
                                         .font(.largeTitle)
-                                        .foregroundStyle(.red)
+                                        .foregroundStyle(color)
                                     Text(fileLabel(for: file))
                                         .font(.caption.weight(.medium))
+                                        .foregroundStyle(.primary)
                                         .lineLimit(2)
                                         .multilineTextAlignment(.center)
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
-                                .background(.fill.quaternary)
+                                .background(color.opacity(0.12))
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
                             .buttonStyle(.plain)
@@ -102,12 +104,14 @@ struct FileListSection: View {
         .fullScreenCover(item: $selectedPDF) { file in
             if let url = file.storageURL {
                 NavigationStack {
-                    PDFViewerView(url: url)
-                        .safeAreaInset(edge: .bottom) {
-                            if audioManager.isLoaded {
-                                MiniPlayerBar(manager: audioManager)
-                            }
+                    ZStack(alignment: .bottom) {
+                        PDFViewerView(url: url)
+                            .ignoresSafeArea(edges: .bottom)
+
+                        if audioManager.isLoaded {
+                            MiniPlayerBar(manager: audioManager)
                         }
+                    }
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Done") { selectedPDF = nil }
@@ -198,6 +202,15 @@ struct FileListSection: View {
         case .video: .purple
         default: .secondary
         }
+    }
+
+    private func instrumentColor(for file: File) -> Color {
+        guard let name = file.instrumentName?.lowercased() else { return .white }
+        if name.contains("bass") { return .blue }
+        if name.contains("guitar") { return .red }
+        if name.contains("drum") || name.contains("percussion") { return .yellow }
+        if name.contains("piano") || name.contains("keyboard") || name.contains("organ") { return .purple }
+        return .white
     }
 
     private func fileLabel(for file: File) -> String {

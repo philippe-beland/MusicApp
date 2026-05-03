@@ -515,7 +515,7 @@ struct MiniPlayerBar: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
         }
-        .background(.ultraThinMaterial)
+        .background(.regularMaterial.opacity(0.6))
         .overlay(alignment: .top) {
             if showingSectionAdded {
                 Text("Added: \(addedSectionName) at \(formatTime(manager.currentTime))")

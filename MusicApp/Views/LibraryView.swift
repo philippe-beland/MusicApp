@@ -3,12 +3,14 @@ import SwiftUI
 struct LibraryView: View {
     @Environment(DataProvider.self) private var dataProvider
     @State private var searchText = ""
+    @State private var showingFilters = false
 
     private var isSearching: Bool { !searchText.isEmpty }
 
     private var filteredArtists: [Artist] {
         let query = searchText.lowercased()
-        return dataProvider.artists.filter {
+        let baseArtists = dataProvider.filteredArtists(from: dataProvider.artists, works: dataProvider.filteredWorks)
+        return baseArtists.filter {
             $0.name.lowercased().contains(query) ||
             $0.genres.rawValue.lowercased().contains(query)
         }
@@ -16,7 +18,7 @@ struct LibraryView: View {
 
     private var filteredWorks: [Work] {
         let query = searchText.lowercased()
-        return dataProvider.works.filter {
+        return dataProvider.filteredWorks.filter {
             $0.title.lowercased().contains(query) ||
             $0.artist.name.lowercased().contains(query) ||
             $0.genre.rawValue.lowercased().contains(query)
@@ -25,7 +27,7 @@ struct LibraryView: View {
 
     private var filteredPieces: [(piece: Piece, work: Work)] {
         let query = searchText.lowercased()
-        return dataProvider.works.flatMap { work in
+        return dataProvider.filteredWorks.flatMap { work in
             work.pieces
                 .filter { $0.title.lowercased().contains(query) }
                 .map { (piece: $0, work: work) }
@@ -91,9 +93,14 @@ struct LibraryView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 32) {
+                            if showingFilters {
+                                StatusFilterBar()
+                                    .padding(.horizontal)
+                            }
+
                             // Recently Listened
-                            if !dataProvider.works.isEmpty {
-                                WorkCarousel(title: "Recently Listened", works: dataProvider.works)
+                            if !dataProvider.filteredWorks.isEmpty {
+                                WorkCarousel(title: "Recently Listened", works: dataProvider.filteredWorks)
                             }
 
                             // Genre browsing
@@ -103,8 +110,8 @@ struct LibraryView: View {
                                     .padding(.horizontal)
 
                                 GenreGridView(
-                                    artists: dataProvider.artists,
-                                    works: dataProvider.works
+                                    artists: dataProvider.filteredArtists(from: dataProvider.artists, works: dataProvider.filteredWorks),
+                                    works: dataProvider.filteredWorks
                                 )
                                 .padding(.horizontal)
                             }
@@ -115,6 +122,9 @@ struct LibraryView: View {
             }
             .navigationTitle("Library")
             .searchable(text: $searchText, prompt: "Works, artists, genres...")
+            .toolbar {
+                StatusFilterToolbar(showingFilters: $showingFilters)
+            }
         }
     }
 }
@@ -210,18 +220,132 @@ struct GenreArtistsView: View {
     let genre: Genre
     let artists: [Artist]
     let works: [Work]
+    @Environment(DataProvider.self) private var dataProvider
+    @State private var showingNewArtist = false
+    @State private var showingFilters = false
+
+    private var displayedArtists: [Artist] {
+        dataProvider.filteredArtists(from: artists, works: displayedWorks)
+    }
+
+    private var displayedWorks: [Work] {
+        guard dataProvider.isFiltering else { return works }
+        return works.compactMap { work in
+            let kept = work.pieces.filter { dataProvider.piecePassesFilters($0) }
+            guard !kept.isEmpty else { return nil }
+            var filtered = work
+            filtered.pieces = kept
+            return filtered
+        }
+    }
 
     var body: some View {
-        List(artists) { artist in
-            NavigationLink(destination: ArtistDetailView(
-                artist: artist,
-                works: works.filter { $0.artist.id == artist.id }
-            )) {
-                ArtistListRow(artist: artist)
+        VStack(spacing: 0) {
+            if showingFilters {
+                StatusFilterBar()
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+            }
+
+            List(displayedArtists) { artist in
+                NavigationLink(destination: ArtistDetailView(
+                    artist: artist,
+                    works: displayedWorks.filter { $0.artist.id == artist.id }
+                )) {
+                    ArtistListRow(artist: artist)
+                }
+            }
+            .listStyle(.plain)
+        }
+        .navigationTitle(genre.displayName)
+        .toolbar {
+            StatusFilterToolbar(showingFilters: $showingFilters)
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingNewArtist = true
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
         }
-        .listStyle(.plain)
-        .navigationTitle(genre.displayName)
+        .sheet(isPresented: $showingNewArtist) {
+            NewArtistView(defaultGenre: genre)
+        }
+    }
+}
+
+// MARK: - New Artist View
+
+struct NewArtistView: View {
+    @Environment(DataProvider.self) private var dataProvider
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name = ""
+    @State private var type: ArtistType = .person
+    @State private var genre: Genre
+    @State private var country = ""
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(defaultGenre: Genre = .other) {
+        _genre = State(initialValue: defaultGenre)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                SwiftUI.Section("General") {
+                    TextField("Name", text: $name)
+                    Picker("Type", selection: $type) {
+                        ForEach(ArtistType.allCases, id: \.self) { t in
+                            Text(t.rawValue.capitalized).tag(t)
+                        }
+                    }
+                    Picker("Genre", selection: $genre) {
+                        ForEach(Genre.allCases, id: \.self) { g in
+                            Text(g.displayName).tag(g)
+                        }
+                    }
+                    TextField("Country", text: $country)
+                }
+
+                if let error = errorMessage {
+                    SwiftUI.Section {
+                        Text(error).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("New Artist")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { create() }
+                        .disabled(name.isEmpty || isSaving)
+                }
+            }
+        }
+    }
+
+    private func create() {
+        isSaving = true
+        errorMessage = nil
+        Task {
+            do {
+                try await dataProvider.createArtist(
+                    name: name,
+                    type: type,
+                    genre: genre,
+                    country: country.isEmpty ? nil : country
+                )
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isSaving = false
+        }
     }
 }
 

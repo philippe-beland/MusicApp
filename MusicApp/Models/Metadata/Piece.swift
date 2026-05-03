@@ -26,7 +26,14 @@ struct Piece: Identifiable, Hashable, Codable {
     
     var sceneDescription: String?
     var timecode: String?
-    
+
+    // Status flags
+    var listened: Bool = false
+    var scoreRead: Bool = false
+    var transcribed: Bool = false
+    var analyzed: Bool = false
+    var played: Bool = false
+
     //var parts: [Part]?
     var sections: [Section]?
     var files: [File]?
