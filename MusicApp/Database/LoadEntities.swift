@@ -230,6 +230,7 @@ extension WorkRow {
 
 func fetchArtists() async throws -> [Artist] {
     let rows: [ArtistRow] = try await supabase
+        .schema("music")
         .from("artist")
         .select()
         .execute()
@@ -240,6 +241,7 @@ func fetchArtists() async throws -> [Artist] {
 func fetchWorksWithPieces() async throws -> [Work] {
     // Fetch works with embedded artist
     let workRows: [WorkRow] = try await supabase
+        .schema("music")
         .from("work")
         .select("*, artist(*)")
         .execute()
@@ -247,6 +249,7 @@ func fetchWorksWithPieces() async throws -> [Work] {
 
     // Fetch all pieces
     let pieceRows: [PieceRow] = try await supabase
+        .schema("music")
         .from("piece")
         .select()
         .execute()
@@ -254,6 +257,7 @@ func fetchWorksWithPieces() async throws -> [Work] {
 
     // Fetch all files
     let fileRows: [FileRow] = try await supabase
+        .schema("music")
         .from("file")
         .select()
         .execute()
@@ -261,6 +265,7 @@ func fetchWorksWithPieces() async throws -> [Work] {
 
     // Fetch all sections
     let sectionRows: [SectionRow] = try await supabase
+        .schema("music")
         .from("section")
         .select()
         .execute()
@@ -395,6 +400,7 @@ struct PieceInsert: Codable, Sendable {
 
 func updateArtist(id: UUID, update: ArtistUpdate) async throws {
     try await supabase
+        .schema("music")
         .from("artist")
         .update(update)
         .eq("id", value: id)
@@ -403,6 +409,7 @@ func updateArtist(id: UUID, update: ArtistUpdate) async throws {
 
 func updateWork(id: UUID, update: WorkUpdate) async throws {
     try await supabase
+        .schema("music")
         .from("work")
         .update(update)
         .eq("id", value: id)
@@ -411,6 +418,7 @@ func updateWork(id: UUID, update: WorkUpdate) async throws {
 
 func updatePiece(id: UUID, update: PieceUpdate) async throws {
     try await supabase
+        .schema("music")
         .from("piece")
         .update(update)
         .eq("id", value: id)
@@ -418,6 +426,7 @@ func updatePiece(id: UUID, update: PieceUpdate) async throws {
 }
 func insertSection(_ section: SectionInsert) async throws {
     try await supabase
+        .schema("music")
         .from("section")
         .insert(section)
         .execute()
@@ -425,6 +434,7 @@ func insertSection(_ section: SectionInsert) async throws {
 
 func deleteSection(id: UUID) async throws {
     try await supabase
+        .schema("music")
         .from("section")
         .delete()
         .eq("id", value: id)
@@ -433,6 +443,7 @@ func deleteSection(id: UUID) async throws {
 
 func insertArtist(_ artist: ArtistInsert) async throws {
     try await supabase
+        .schema("music")
         .from("artist")
         .insert(artist)
         .execute()
@@ -440,6 +451,7 @@ func insertArtist(_ artist: ArtistInsert) async throws {
 
 func insertWork(_ work: WorkInsert) async throws {
     try await supabase
+        .schema("music")
         .from("work")
         .insert(work)
         .execute()
@@ -447,6 +459,7 @@ func insertWork(_ work: WorkInsert) async throws {
 
 func insertPiece(_ piece: PieceInsert) async throws {
     try await supabase
+        .schema("music")
         .from("piece")
         .insert(piece)
         .execute()
